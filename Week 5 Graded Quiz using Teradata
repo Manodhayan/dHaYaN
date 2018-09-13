@@ -16,41 +16,65 @@ Question 3
 There was one store in the database which had only 11 days in one of its months (in other words, that store/month/year combination only contained 11 days of transaction data). In what city and state was this store located?
 //Atlanta, GA
 
+ SELECT DISTINCT t.store, s.city, s.state
 
-SELECT DaysInfo.Days,DaysInfo.STORE,CITY,STATE
-FROM STORE_MSA LEFT JOIN (SELECT COUNT(DISTINCT saledate) AS Days,(EXTRACT(MONTH FROM saledate)) AS Months,
-(EXTRACT(YEAR FROM saledate)) AS Years,store
-FROM TRNSACT
-GROUP BY store,Years,Months
-HAVING Days=11) AS DaysInfo
-ON STORE_MSA.STORE=DaysInfo.STORE
-WHERE  DaysInfo.Days IS NOT NULL
+FROM trnsact t JOIN strinfo s
+
+ON t.store=s.store
+
+WHERE t.store IN (SELECT days_in_month.store
+
+FROM(SELECT EXTRACT(YEAR from saledate) AS sales_year,
+
+EXTRACT(MONTH from saledate) AS sales_month, store, COUNT (DISTINCT saledate) as numdays
+
+FROM trnsact
+
+GROUP BY sales_year, sales_month, store
+
+HAVING numdays=11) as days_in_month);
 
 
 Question 4
 
 Which sku number had the greatest increase in total sales revenue from November to December?
 //3949538
-SELECT DISTINCT sku,
-SUM(CASE WHEN (EXTRACT(MONTH FROM saledate))=11 THEN amt END) AS NOV,
-SUM( CASE WHEN (EXTRACT(MONTH FROM saledate))=12 THEN amt END)  AS DECE,
-(DECE-NOV) AS REV_INC
+SELECT sku,
 
-FROM TRNSACT
-WHERE STYPE='P'
+sum(case when extract(month from saledate)=11 then amt end) as November,
+
+sum(case when extract(month from saledate)=12 then amt end) as December,
+
+December-November AS sales_bump
+
+FROM trnsact
+
+WHERE stype='P'
+
 GROUP BY sku
-ORDER BY REV_INC DESC;
 
- Question 5
+ORDER BY sales_bump DESC; 
+
+Question 5
 
 What vendor has the greatest number of distinct skus in the transaction table that do not exist in the skstinfo table? (Remember that vendors are listed as distinct numbers in our data set).
 //5715232
-SELECT COUNT(DISTINCT SKUINFO.sku) AS COUNTOF, SKUINFO.VENDOR
-FROM SKUINFO LEFT JOIN TRNSACT
-ON TRNSACT.SKU=SKUINFO.SKU
-WHERE TRNSACT.SKU NOT IN (SELECT DISTINCT SKU FROM SKSTINFO)
-GROUP BY SKUINFO. VENDOR
-ORDER BY COUNTOF DESC
+ SELECT count(DISTINCT t.sku) as num_skus, si.vendor
+
+FROM trnsact t
+
+LEFT JOIN skstinfo s
+
+ON t.sku=s.sku AND t.store=s.store
+
+JOIN skuinfo si ON t.sku=si.sku
+
+WHERE s.sku IS NULL
+
+GROUP BY si.vendor
+
+ORDER BY num_skus DESC; 
+
 
 Question 6
 
